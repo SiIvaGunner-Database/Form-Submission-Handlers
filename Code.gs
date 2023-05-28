@@ -1,5 +1,5 @@
 // IMPORTANT! Enable dev mode when testing.
-// HighQualityUtils.settings().enableDevMode()
+HighQualityUtils.settings().enableDevMode()
 HighQualityUtils.settings().setAuthToken(ScriptProperties)
 
 /**
@@ -32,7 +32,7 @@ function onEdit(event) {
 function checkSubmission(cellRange) {
   const sheet = cellRange.getSheet()
   const rowRange = sheet.getRange(1, cellRange.getRowIndex(), 1, sheet.getLastColumnIndex)
-  const [timestamp, stringOfIds, isAccepted, isResolved, notes] = rowRange.getValues()[0]
+  let [timestamp, stringOfIds, isAccepted, isResolved, notes] = rowRange.getValues()[0]
 
   if (isAccepted !== "TRUE") {
     console.log("This submission hasn't been accepted yet")
@@ -42,21 +42,158 @@ function checkSubmission(cellRange) {
     return
   }
 
-  const ids = splitStringOfIds(stringOfIds)
+  notes = []
 
-  switch (sheet.getName()) {
-    case "Videos":
-      HighQualityUtils.videos().createAll(ids) // TODO
-      break;
-    case "Channels":
-      HighQualityUtils.channels().createAll(ids) // TODO
-      break;
-    case "Playlists":
-    case "Contributor Playlists":
-      HighQualityUtils.playlists().createAll(ids) // TODO
-      break;
+  splitStringOfIds(stringOfIds).forEach(id => {
+    console.log(`Adding ${id}`)
+
+    try {
+      switch (sheet.getName()) {
+        case "Videos":
+          notes.push(getNewVideoResult(id))
+          break;
+        case "Channels":
+          notes.push(getNewChannelResult(id))
+          break;
+        case "Playlists":
+        case "Contributor Playlists":
+          notes.push(getNewPlaylistResult(id))
+          break;
+        default:
+          console.warn("Invalid sheet")
+      }
+    } catch (error) {
+      console.warn(`Failed to add ${id}`, error)
+      notes.push(`Failed to add ${id}`)
+    }
+  })
+
+  isResolved = true
+  rowRange.setValues([[timestamp, stringOfIds, isAccepted, isResolved, notes.join("\n")]])
+}
+
+/**
+ * Add a video to the database and return the logged result.
+ * @param {String} id - The video ID.
+ * @return {String} The result of the operation.
+ */
+function getNewVideoResult(id) {
+  const video = HighQualityUtils.videos().getById(id)
+  const channel = video.getChannel()
+
+  const videoSheet = channel.getSheet()
+  const undocumentedRipsPlaylist = channel.getUndocumentedRipsPlaylist()
+
+  if (video.getDatabaseObject() !== undefined) {
+    return formatAlreadyAddedResult(id)
   }
 
-  // Set "Resolved?" to true
-  row.check()
+  const defaults = {
+    "wikiStatus": video.getWikiStatus(),
+    "videoStatus": video.getYoutubeStatus()
+  }
+  video.createDatabaseObject(defaults)
+
+  if (undocumentedRipsPlaylist !== undefined && video.getDatabaseObject().wikiStatus === "Undocumented") {
+    undocumentedRipsPlaylist.addVideo(id)
+  }
+
+  const videoValues = [[
+    HighQualityUtils.utils().formatYoutubeHyperlink(id),
+    video.getWikiHyperlink(),
+    video.getDatabaseObject().wikiStatus,
+    video.getDatabaseObject().videoStatus,
+    video.getDatabaseObject().publishedAt,
+    video.getDatabaseObject().duration,
+    video.getDatabaseObject().description,
+    video.getDatabaseObject().viewCount,
+    video.getDatabaseObject().likeCount,
+    0, // Dislike count
+    video.getDatabaseObject().commentCount
+  ]]
+
+  videoSheet.insertValues(videoValues)
+  videoSheet.sort(5)
+
+  return formatAddedResult(id)
+}
+
+/**
+ * Add a channel to the database and return the logged result.
+ * @param {String} id - The channel ID.
+ * @return {String} The result of the operation.
+ */
+function getNewChannelResult(id) {
+  const channel = HighQualityUtils.channels().getById(id)
+  const channelSheet = channel.getSheet() // TODO get the channel sheet instead of the video sheet
+  const videoSpreadsheet = channel.getSpreadsheet()
+
+  if (channel.getDatabaseObject() !== undefined) {
+    return formatAlreadyAddedResult(id)
+  }
+
+  const defaults = {
+    "channelStatus": channel.getYoutubeStatus()
+  }
+  channel.createDatabaseObject(defaults)
+
+  const channelValues = [[
+    HighQualityUtils.utils().formatYoutubeHyperlink(id),
+    channel.getSpreadsheetHyperlink(),
+    channel.getDatabaseObject().title,
+    channel.getWikiHyperlink(),
+    channel.getDatabaseObject().channelStatus,
+    channel.getDatabaseObject().publishedAt,
+    channel.getDatabaseObject().description,
+    channel.getDatabaseObject().videoCount,
+    channel.getDatabaseObject().subscriberCount,
+    channel.getDatabaseObject().viewCount
+  ]]
+
+  channelSheet.insertValues(channelValues)
+  channelSheet.sort(3)
+
+  // TODO create and format a new sheet in the fan channel rips spreadsheet and populate the values
+
+  return formatAddedResult(id)
+}
+
+/**
+ * Add a playlist to the database and return the logged result.
+ * @param {String} id - The playlist ID.
+ * @return {String} The result of the operation.
+ */
+function getNewPlaylistResult(id) {
+  const playlist = HighQualityUtils.playlists().getById(id)
+  const channel = playlist.getChannel()
+
+  if (video.getDatabaseObject() !== undefined) {
+    return formatAlreadyAddedResult(id)
+  }
+
+  // TODO add the missing playlist
+
+  return formatAddedResult(id)
+}
+
+/**
+ * Format an unnecessary addition result.
+ * @param {String} id - The object ID.
+ * @return {String} The result: "[id] has already been added".
+ */
+function formatAlreadyAddedResult(id) {
+  const result = `${id} has already been added`
+  console.log(result)
+  return result
+}
+
+/**
+ * Format a successful addition result.
+ * @param {String} id - The object ID.
+ * @return {String} The result: "Added [id]".
+ */
+function formatAddedResult(id) {
+  const result = `Added ${id}`
+  console.log(result)
+  return result
 }
