@@ -1,5 +1,5 @@
 // IMPORTANT! Enable dev mode when testing.
-HighQualityUtils.settings().enableDevMode()
+// HighQualityUtils.settings().enableDevMode()
 HighQualityUtils.settings().setAuthToken(ScriptProperties)
 
 /**
