@@ -77,15 +77,19 @@ function getNewObjectResult(id, sheetName) {
 
 /**
  * Add a video to the database and return the logged result.
- * @param {String} id - The video ID.
+ * @param {String | Video} videoOrId - The video model or video ID.
  * @return {String} The result of the operation.
  */
-function getNewVideoResult(id) {
-  if (id.length !== 11) {
-    return `Invalid video ID "${id}"`
-  }
+function getNewVideoResult(videoOrId) {
+  let video = videoOrId
 
-  const video = HighQualityUtils.videos().getById(id)
+  if (typeof videoOrId === "String") {
+    if (videoOrId.length !== 11) {
+      return `Invalid video ID "${videoOrId}"`
+    }
+
+    video = HighQualityUtils.videos().getById(videoOrId)
+  }
 
   if (video.getDatabaseObject() !== undefined) {
     return `${id} has already been added`
@@ -120,7 +124,7 @@ function getNewVideoResult(id) {
 
   videoSheet.insertValues(videoValues)
   videoSheet.sort(5, false)
-  return `Added ${id}`
+  return `Added video ${id}`
 }
 
 /**
@@ -139,7 +143,7 @@ function getNewChannelResult(id) {
     return `${id} has already been added`
   }
 
-  const channelSheet = channel.getSheet() // TODO get the channel sheet instead of the video sheet
+  const channelSheet = HighQualityUtils.spreadsheets().getById("16PLJOqdZOdLXguKmUlUwZfu-1rVXzuJLHbY18BUSOAw").getSheet("Channels")
   const videoSpreadsheet = channel.getSpreadsheet()
   const defaults = { "channelStatus": channel.getYoutubeStatus() }
   channel.createDatabaseObject(defaults)
@@ -159,10 +163,39 @@ function getNewChannelResult(id) {
 
   channelSheet.insertValues(channelValues)
   channelSheet.sort(3)
+  let videoSheet = videoSpreadsheet.getSheet(channel.getDatabaseObject().title)
 
-  // TODO create and format a new sheet in the fan channel rips spreadsheet and populate the values
+  // If the sheet hasn't been created yet, create and format it
+  if (videoSheet.getOriginalObject() === undefined) {
+    videoSheet = videoSpreadsheet.insertSheet(channel.getDatabaseObject().title)
+    formatSheet(videoSheet)
+  }
 
-  return `Added ${id}`
+  const indexSheet = videoSpreadsheet.getSheetByName("Index");
+  const summarySheet = videoSpreadsheet.getSheetByName("Summary");
+
+  // TODO update the index and summary sheets
+
+  const videos = channel.getVideos()
+  console.log(`${videos.length} videos found`)
+  videos.forEach(video => console.log(getNewVideoResult(video)))
+
+  return `Added channel ${id}`
+}
+
+/**
+ * Format a sheet, creating a header row and updating value alignment and date formatting.
+ * The sheet can but does not have to be empty.
+ * @param {Array[String]} columnLabels - A column labels to put into the top header row.
+ * @param {Array[Number]} [dateColumnIndexes] - An optional list of columns containing date values.
+ * @param {Array[Number]} [hiddenColumnIndexes] - An optional list of columns to hide from view.
+ */
+function formatSheet(dateColumnIndexes, hiddenColumnIndexes) {
+  // TODO
+  // Freeze and bold the top row
+  // Left align all column values
+  // Format date columns
+  // Hide columns
 }
 
 /**
@@ -185,5 +218,5 @@ function getNewPlaylistResult(id) {
 
   // TODO add the missing playlist
 
-  return `Added ${id}`
+  return `Added playlist ${id}`
 }
