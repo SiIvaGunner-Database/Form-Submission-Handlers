@@ -8,7 +8,7 @@ HighQualityUtils.settings().setAuthToken(ScriptProperties)
 function checkSpreadsheetForNewSubmissions() {
   const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId()
   const spreadsheet = HighQualityUtils.spreadsheets().getById(spreadsheetId)
-  const sheetNames = ["Videos"]
+  const sheetNames = ["Videos", "Channels"]
 
   sheetNames.forEach(sheetName => {
     console.log(`Checking sheet ${sheetName}`)
@@ -144,9 +144,13 @@ function getNewChannelResult(id) {
   }
 
   const channelSheet = HighQualityUtils.spreadsheets().getById("16PLJOqdZOdLXguKmUlUwZfu-1rVXzuJLHbY18BUSOAw").getSheet("Channels")
-  const videoSpreadsheet = channel.getSpreadsheet()
-  const defaults = { "channelStatus": channel.getYoutubeStatus() }
+  const defaults = {
+    "channelStatus": channel.getYoutubeStatus(),
+    "productionSpreadsheet": "1Q_L84zZ2rzS57ZcDcCdmxMsguqjpnbLGr5_QVX5LVKA", // SiIvaGunner Fan Channel Rips
+    "developmentSpreadsheet": "1JhARnRkPEtwGFGgmxIBFoWixB7QR2K_toz38-tTHDOM" // Copy of SiIvaGunner Fan Channel Rips
+  }
   channel.createDatabaseObject(defaults)
+  const videoSpreadsheet = channel.getSpreadsheet()
 
   const channelValues = [[
     HighQualityUtils.utils().formatYoutubeHyperlink(id),
@@ -167,35 +171,43 @@ function getNewChannelResult(id) {
 
   // If the sheet hasn't been created yet, create and format it
   if (videoSheet.getOriginalObject() === undefined) {
-    videoSheet = videoSpreadsheet.insertSheet(channel.getDatabaseObject().title)
-    formatSheet(videoSheet)
+    videoSheet.create(channel.getDatabaseObject().title)
+    const columnLabels = [
+      "ID", "Title", "Wiki Status", "Video Status", "Upload Date (UTC)",
+      "Length", "Description", "Views", "Likes", "Dislikes", "Comments"
+    ]
+    const dateColumnIndexes = [6]
+    const hiddenColumnIndexes = [3]
+    videoSheet.format(columnLabels, dateColumnIndexes, hiddenColumnIndexes)
   }
 
+  // Update the index sheet
+  const spreadsheetId = videoSheet.getOriginalObject().getParent().getId()
+  const sheetId = videoSheet.getOriginalObject().getSheetId()
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId}`
+  const titleHyperlink = HighQualityUtils.utils().formatHyperlink(sheetUrl, channel.getDatabaseObject().title)
+
+  const currentDateUtc = Utilities.formatDate(new Date(), "UTC", "yyyy-MM-dd HH:mm:ss")
+  const channelIndexValues = [
+    [titleHyperlink],
+    [`="Currently has " & COUNTIF('${channel.getDatabaseObject().title}'!A2:A, "*") & " rips listed."`],
+    [`Last updated ${currentDateUtc} UTC on row 2.`],
+    [""]
+  ]
+
   const indexSheet = videoSpreadsheet.getSheetByName("Index");
-  const summarySheet = videoSpreadsheet.getSheetByName("Summary");
+  const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
-  // TODO update the index and summary sheets
+  // Insert four new rows, make the title hyperlink bigger and remove the underline
+  indexSheet.insertValues(channelIndexValues, seeAlsoRowIndex)
+  indexSheet.getOriginalObject().getRange(seeAlsoRowIndex - 4, 2).setFontSize(14).setFontLine("none")
 
+  // Populate the video data in the new sheet
   const videos = channel.getVideos()
   console.log(`${videos.length} videos found`)
   videos.forEach(video => console.log(getNewVideoResult(video)))
 
   return `Added channel ${id}`
-}
-
-/**
- * Format a sheet, creating a header row and updating value alignment and date formatting.
- * The sheet can but does not have to be empty.
- * @param {Array[String]} columnLabels - A column labels to put into the top header row.
- * @param {Array[Number]} [dateColumnIndexes] - An optional list of columns containing date values.
- * @param {Array[Number]} [hiddenColumnIndexes] - An optional list of columns to hide from view.
- */
-function formatSheet(dateColumnIndexes, hiddenColumnIndexes) {
-  // TODO
-  // Freeze and bold the top row
-  // Left align all column values
-  // Format date columns
-  // Hide columns
 }
 
 /**
