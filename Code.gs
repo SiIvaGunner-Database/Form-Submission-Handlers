@@ -33,6 +33,7 @@ function checkSheetForNewSubmissions(sheet, sheetName) {
     const row = index + 2
     console.log(`Newly approved submission on row ${row}`)
     const ids = HighQualityUtils.utils().splitStringOfIds(stringOfIds)
+    console.log("IDs:", ids)
 
     notes = ids.map(id => {
       const result = getNewObjectResult(id, sheetName)
@@ -70,26 +71,18 @@ function getNewObjectResult(id, sheetName) {
         throw new Error(`Invalid sheet name ${sheetName}`)
     }
   } catch (error) {
-    console.error(error)
+    console.error(error.stack)
     return `Failed to add ${id}`
   }
 }
 
 /**
  * Add a video to the database and return the logged result.
- * @param {String | Video} videoOrId - The video model or video ID.
+ * @param {String} id - The video ID.
  * @return {String} The result of the operation.
  */
-function getNewVideoResult(videoOrId) {
-  let video = videoOrId
-
-  if (typeof videoOrId === "String") {
-    if (videoOrId.length !== 11) {
-      return `Invalid video ID "${videoOrId}"`
-    }
-
-    video = HighQualityUtils.videos().getById(videoOrId)
-  }
+function getNewVideoResult(id) {
+  const video = HighQualityUtils.videos().getById(id)
 
   if (video.getDatabaseObject() !== undefined) {
     return `${id} has already been added`
@@ -143,15 +136,18 @@ function getNewChannelResult(id) {
     return `${id} has already been added`
   }
 
-  const channelSheet = HighQualityUtils.spreadsheets().getById("16PLJOqdZOdLXguKmUlUwZfu-1rVXzuJLHbY18BUSOAw").getSheet("Channels")
+  console.log("Creating database object...")
   const defaults = {
     "channelStatus": channel.getYoutubeStatus(),
     "productionSpreadsheet": "1Q_L84zZ2rzS57ZcDcCdmxMsguqjpnbLGr5_QVX5LVKA", // SiIvaGunner Fan Channel Rips
-    "developmentSpreadsheet": "1JhARnRkPEtwGFGgmxIBFoWixB7QR2K_toz38-tTHDOM" // Copy of SiIvaGunner Fan Channel Rips
+    "developmentSpreadsheet": "1JhARnRkPEtwGFGgmxIBFoWixB7QR2K_toz38-tTHDOM", // Copy of SiIvaGunner Fan Channel Rips
+    "productionChangelogSpreadsheet": "1pN9O24zfrDBl6WNySj4yurFiqT3UmQd1IdRISvUjHd8", // SiIvaGunner Fan Channel Rips Changelong
+    "developmentChangelogSpreadsheet": "1EqHI5csBFO0dpm4HpwwzAqtmUbC2B5G-MW1Kgew-vpM" // Copy of SiIvaGunner Fan Channel Rips Changelog
   }
   channel.createDatabaseObject(defaults)
-  const videoSpreadsheet = channel.getSpreadsheet()
 
+  console.log("Inserting row in channel sheet...")
+  console.log(channel.getDatabaseObject())
   const channelValues = [[
     HighQualityUtils.utils().formatYoutubeHyperlink(id),
     channel.getSpreadsheetHyperlink(),
@@ -164,48 +160,45 @@ function getNewChannelResult(id) {
     channel.getDatabaseObject().subscriberCount,
     channel.getDatabaseObject().viewCount
   ]]
+  HighQualityUtils.spreadsheets().getById("16PLJOqdZOdLXguKmUlUwZfu-1rVXzuJLHbY18BUSOAw").getSheet("Channels").insertValues(channelValues).sort(3)
 
-  channelSheet.insertValues(channelValues)
-  channelSheet.sort(3)
-  let videoSheet = videoSpreadsheet.getSheet(channel.getDatabaseObject().title)
+  console.log("Inserting new sheet in fan channel rips spreadsheet...")
+  const columnLabels = [
+    "ID", "Title", "Wiki Status", "Video Status", "Upload Date (UTC)",
+    "Length", "Description", "Views", "Likes", "Dislikes", "Comments"
+  ]
+  const videoSpreadsheet = channel.getSpreadsheet()
+  const videoSheet = videoSpreadsheet.createSheet(channel.getDatabaseObject().title)
+  videoSheet.getOriginalObject().setColumnWidth(2, 500) // Title column
 
-  // If the sheet hasn't been created yet, create and format it
-  if (videoSheet.getOriginalObject() === undefined) {
-    videoSheet.create(channel.getDatabaseObject().title)
-    const columnLabels = [
-      "ID", "Title", "Wiki Status", "Video Status", "Upload Date (UTC)",
-      "Length", "Description", "Views", "Likes", "Dislikes", "Comments"
-    ]
-    const dateColumnIndexes = [6]
-    const hiddenColumnIndexes = [3]
-    videoSheet.format(columnLabels, dateColumnIndexes, hiddenColumnIndexes)
-  }
-
-  // Update the index sheet
+  console.log("Inserting new rows in index sheet...")
   const spreadsheetId = videoSheet.getOriginalObject().getParent().getId()
   const sheetId = videoSheet.getOriginalObject().getSheetId()
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId}`
   const titleHyperlink = HighQualityUtils.utils().formatHyperlink(sheetUrl, channel.getDatabaseObject().title)
-
   const currentDateUtc = Utilities.formatDate(new Date(), "UTC", "yyyy-MM-dd HH:mm:ss")
   const channelIndexValues = [
+    [""],
     [titleHyperlink],
     [`="Currently has " & COUNTIF('${channel.getDatabaseObject().title}'!A2:A, "*") & " rips listed."`],
-    [`Last updated ${currentDateUtc} UTC on row 2.`],
-    [""]
+    [`Last updated ${currentDateUtc} UTC on row 2.`]
   ]
-
-  const indexSheet = videoSpreadsheet.getSheetByName("Index");
+  const indexSheet = videoSpreadsheet.getSheet("Index");
   const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
   // Insert four new rows, make the title hyperlink bigger and remove the underline
-  indexSheet.insertValues(channelIndexValues, seeAlsoRowIndex)
-  indexSheet.getOriginalObject().getRange(seeAlsoRowIndex - 4, 2).setFontSize(14).setFontLine("none")
+  indexSheet.insertValues(channelIndexValues, seeAlsoRowIndex - 1, 2)
+  indexSheet.getOriginalObject().getRange(seeAlsoRowIndex, 2).setFontSize(14).setFontLine("none")
 
   // Populate the video data in the new sheet
-  const videos = channel.getVideos()
-  console.log(`${videos.length} videos found`)
-  videos.forEach(video => console.log(getNewVideoResult(video)))
+  const [videos] = channel.getVideos()
+  console.log(`Adding ${videos.length} videos to database...`)
+  videos.forEach(video => console.log(getNewVideoResult(video.getId())))
+
+  console.log("Formatting the new fan channel rips sheet...")
+  const dateColumnIndexes = [5] // Upload date column
+  const hiddenColumnIndexes = [3] // Wiki status column
+  videoSheet.format(columnLabels, dateColumnIndexes, hiddenColumnIndexes)
 
   return `Added channel ${id}`
 }
