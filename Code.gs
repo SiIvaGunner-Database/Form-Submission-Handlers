@@ -1,6 +1,8 @@
 // IMPORTANT! Enable dev mode when testing.
 // HighQualityUtils.settings().enableDevMode()
 HighQualityUtils.settings().setAuthToken(ScriptProperties)
+const timeLimitPassedError = new Error("Time limit passed; ending runtime")
+const startTime = new Date()
 
 /**
  * Check all applicable sheets for newly approved submissions to add to the database.
@@ -71,6 +73,10 @@ function getNewObjectResult(id, sheetName) {
         throw new Error(`Invalid sheet name ${sheetName}`)
     }
   } catch (error) {
+    if (error === timeLimitPassedError) {
+      throw timeLimitPassedError
+    }
+
     console.error(error.stack)
     return `Failed to add ${id}`
   }
@@ -135,7 +141,6 @@ function getNewChannelResult(id) {
   }
 
   const channel = HighQualityUtils.channels().getById(id)
-  const channelTitle = channel.getDatabaseObject().title
 
   // If the database object hasn't been created yet
   if (channel.getDatabaseObject() === undefined) {
@@ -154,7 +159,7 @@ function getNewChannelResult(id) {
     const channelValues = [[
       HighQualityUtils.utils().formatYoutubeHyperlink(id),
       channel.getSpreadsheetHyperlink(),
-      channelTitle,
+      channel.getDatabaseObject().title,
       channel.getWikiHyperlink(),
       channel.getDatabaseObject().channelStatus,
       channel.getDatabaseObject().publishedAt,
@@ -166,12 +171,14 @@ function getNewChannelResult(id) {
     HighQualityUtils.spreadsheets().getChannelSpreadsheet().getSheet("Channels").insertValues(channelValues).sort(3)
   }
 
+  const channelTitle = channel.getDatabaseObject().title
   const videoSpreadsheet = channel.getSpreadsheet()
   let videoSheet = videoSpreadsheet.getSheet(channelTitle)
 
   // If the sheet hasn't been created yet
   if (videoSheet.getOriginalObject() === null) {
     console.log("Inserting new sheet in fan channel rips spreadsheet...")
+    SpreadsheetApp.flush()
     videoSheet = videoSpreadsheet.createSheet(channelTitle)
     videoSheet.getOriginalObject().setColumnWidth(2, 500) // Title column
 
@@ -187,7 +194,7 @@ function getNewChannelResult(id) {
       [`="Currently has " & COUNTIF('${channelTitle.replace("'", "''")}'!\$A\$2:\$A, "*") & " rips listed."`],
       [`Last updated ${currentDateUtc} UTC on row 2.`]
     ]
-    const indexSheet = videoSpreadsheet.getSheet("Index");
+    const indexSheet = videoSpreadsheet.getSheet("Index")
     const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
     // Insert four new rows, make the title hyperlink bigger and remove the underline
@@ -198,9 +205,17 @@ function getNewChannelResult(id) {
   // Populate the video data in the new sheet
   const [videos] = channel.getVideos()
   console.log(`Adding ${videos.length} videos to database...`)
-  videos.forEach(video => console.log(getNewVideoResult(video.getId(), true)))
+
+  videos.forEach(video => {
+    if (new Date().getTime() - startTime.getTime() > 350000) {
+      throw timeLimitPassedError
+    }
+
+    console.log(getNewVideoResult(video.getId(), true))
+  })
 
   console.log("Formatting the new fan channel rips sheet...")
+  videos[0].getChannel().getSheet().sort(5, false)
   const columnLabels = [
     "ID", "Title", "Wiki Status", "Video Status", "Upload Date (UTC)",
     "Length", "Description", "Views", "Likes", "Dislikes", "Comments"
