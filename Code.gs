@@ -186,19 +186,12 @@ function getNewChannelResult(id) {
     const spreadsheetId = videoSheet.getOriginalObject().getParent().getId()
     const sheetId = videoSheet.getOriginalObject().getSheetId()
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#gid=${sheetId}`
-    const titleHyperlink = HighQualityUtils.utils().formatHyperlink(sheetUrl, channelTitle)
-    const currentDateUtc = Utilities.formatDate(new Date(), "UTC", "yyyy-MM-dd HH:mm:ss")
-    const channelIndexValues = [
-      [""],
-      [titleHyperlink],
-      [`="Currently has " & COUNTIF('${channelTitle.replace("'", "''")}'!\$A\$2:\$A, "*") & " rips listed."`],
-      [`Last updated ${currentDateUtc} UTC on row 2.`]
-    ]
+    const titleHyperlink = HighQualityUtils.utils().formatHyperlink(sheetUrl, `➤ ${channelTitle}`)
     const indexSheet = videoSpreadsheet.getSheet("Index")
     const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
     // Insert four new rows, make the title hyperlink bigger and remove the underline
-    indexSheet.insertValues(channelIndexValues, seeAlsoRowIndex - 1, 2)
+    indexSheet.insertValues([[titleHyperlink]], seeAlsoRowIndex - 1, 2)
     indexSheet.getOriginalObject().getRange(seeAlsoRowIndex, 2).setFontSize(14).setFontLine("none")
   }
 
