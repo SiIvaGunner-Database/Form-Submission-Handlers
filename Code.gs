@@ -112,7 +112,7 @@ function getNewVideoResult(id, goFast = false) {
     video.getWikiHyperlink(),
     video.getDatabaseObject().wikiStatus,
     video.getDatabaseObject().videoStatus,
-    video.getDatabaseObject().publishedAt,
+    HighQualityUtils.utils().formatDate(video.getDatabaseObject().publishedAt),
     video.getDatabaseObject().duration,
     video.getDatabaseObject().description,
     video.getDatabaseObject().viewCount,
@@ -148,9 +148,9 @@ function getNewChannelResult(id) {
     const defaults = {
       "channelStatus": channel.getYoutubeStatus(),
       "productionSpreadsheet": "1Q_L84zZ2rzS57ZcDcCdmxMsguqjpnbLGr5_QVX5LVKA", // SiIvaGunner Fan Channel Rips
-      "developmentSpreadsheet": "1JhARnRkPEtwGFGgmxIBFoWixB7QR2K_toz38-tTHDOM", // Copy of SiIvaGunner Fan Channel Rips
+      "developmentSpreadsheet": "1-X8Jx5uOtzPgMZIVkMu2PR6LgRr0rykdapacv50g5EI", // Copy of SiIvaGunner Fan Channel Rips
       "productionChangelogSpreadsheet": "1pN9O24zfrDBl6WNySj4yurFiqT3UmQd1IdRISvUjHd8", // SiIvaGunner Fan Channel Rips Changelong
-      "developmentChangelogSpreadsheet": "1EqHI5csBFO0dpm4HpwwzAqtmUbC2B5G-MW1Kgew-vpM" // Copy of SiIvaGunner Fan Channel Rips Changelog
+      "developmentChangelogSpreadsheet": "1I3pwwgWhFQKTBFWTxIjWsiCMmbYyS9_02yYXbIeJqxQ" // Copy of SiIvaGunner Fan Channel Rips Changelog
     }
     channel.createDatabaseObject(defaults)
 
@@ -173,10 +173,12 @@ function getNewChannelResult(id) {
 
   const channelTitle = channel.getDatabaseObject().title
   const videoSpreadsheet = channel.getSpreadsheet()
-  let videoSheet = videoSpreadsheet.getSheet(channelTitle)
+  let videoSheet
 
-  // If the sheet hasn't been created yet
-  if (videoSheet.getOriginalObject() === null) {
+  // If the sheet exists, fetch it, else create a new sheet
+  if (videoSpreadsheet.hasSheet(channelTitle) === true) {
+    videoSheet = videoSpreadsheet.getSheet(channelTitle)
+  } else {
     console.log("Inserting new sheet in fan channel rips spreadsheet...")
     SpreadsheetApp.flush()
     videoSheet = videoSpreadsheet.createSheet(channelTitle)
@@ -191,8 +193,9 @@ function getNewChannelResult(id) {
     const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
     // Insert four new rows, make the title hyperlink bigger and remove the underline
+    // TODO Change the row height from 21 to auto on the inserted row
     indexSheet.insertValues([[titleHyperlink]], seeAlsoRowIndex - 1, 2)
-    indexSheet.getOriginalObject().getRange(seeAlsoRowIndex, 2).setFontSize(14).setFontLine("none")
+    indexSheet.getOriginalObject().getRange(seeAlsoRowIndex, 2).setFontLine("none").setFontSize(14)
   }
 
   // Populate the video data in the new sheet
