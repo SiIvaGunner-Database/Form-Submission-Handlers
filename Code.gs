@@ -169,6 +169,8 @@ function getNewChannelResult(id) {
       channel.getDatabaseObject().viewCount
     ]]
     HighQualityUtils.spreadsheets().getChannelSpreadsheet().getSheet("Channels").insertValues(channelValues).sort(3)
+  } else {
+    console.log(`${id} has already been added to the database`)
   }
 
   const channelTitle = channel.getDatabaseObject().title
