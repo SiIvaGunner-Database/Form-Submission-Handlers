@@ -78,7 +78,7 @@ function getNewObjectResult(id, sheetName) {
     }
 
     console.error(error.stack)
-    return `Failed to add ${id}`
+    return `Failed to add ${id}\n${error.stack}`
   }
 }
 
@@ -136,8 +136,14 @@ function getNewVideoResult(id, goFast = false) {
  * @return {String} The result of the operation.
  */
 function getNewChannelResult(id) {
+  // If the ID string is not a channel ID
   if (id.includes("UC") === false) {
-    return `Invalid video ID "${id}"`
+    // If the ID string is a custom channel name
+    if (id.includes("@") === true) {
+      id = HighQualityUtils.youtube().getChannelId(id)
+    } else {
+      return `Invalid video ID "${id}"`
+    }
   }
 
   const channel = HighQualityUtils.channels().getById(id)
@@ -195,9 +201,9 @@ function getNewChannelResult(id) {
     const seeAlsoRowIndex = indexSheet.getRowIndexOfValue("See also", 2)
 
     // Insert four new rows, make the title hyperlink bigger and remove the underline
-    // TODO Change the row height from 21 to auto on the inserted row
     indexSheet.insertValues([[titleHyperlink]], seeAlsoRowIndex - 1, 2)
-    indexSheet.getOriginalObject().getRange(seeAlsoRowIndex, 2).setFontLine("none").setFontSize(14)
+    indexSheet.getOriginalObject().setRowHeight(seeAlsoRowIndex, 27)
+      .getRange(seeAlsoRowIndex, 2).setFontLine("none").setFontSize(14)
   }
 
   // Populate the video data in the new sheet
