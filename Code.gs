@@ -207,7 +207,13 @@ function getNewChannelResult(id) {
   }
 
   // Populate the video data in the new sheet
-  const [videos] = channel.getVideos()
+  const options = {
+    "parameters": {
+      "fields": "id,channel"
+    },
+    "youtubeLimit": 1000
+  }
+  const [videos] = channel.getVideos(options)
   console.log(`Adding ${videos.length} videos to database...`)
 
   videos.forEach(video => {
