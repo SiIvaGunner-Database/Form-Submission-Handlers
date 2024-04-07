@@ -211,7 +211,7 @@ function getNewChannelResult(id) {
   console.log(`Adding ${videos.length} videos to database...`)
 
   videos.forEach(video => {
-    if (new Date().getTime() - startTime.getTime() > 350000) {
+    if (new Date().getTime() - startTime.getTime() > 330000) {
       throw timeLimitPassedError
     }
 
