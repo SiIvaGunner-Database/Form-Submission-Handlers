@@ -98,7 +98,7 @@ function getNewVideoResult(id, goFast = false) {
   const videoSheet = channel.getSheet()
   const undocumentedRipsPlaylist = channel.getUndocumentedRipsPlaylist()
   const defaults = {
-    "wikiStatus": (goFast === true ? "" : video.getWikiStatus()),
+    "wikiStatus": (goFast === true ? "Undocumented" : video.getWikiStatus()),
     "videoStatus": (goFast === true ? "Public" : video.getYoutubeStatus())
   }
   video.createDatabaseObject(defaults)
