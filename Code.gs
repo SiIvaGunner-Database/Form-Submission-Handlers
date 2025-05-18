@@ -98,7 +98,9 @@ function getNewVideoResult(id, goFast = false) {
   const videoSheet = channel.getSheet()
   const undocumentedRipsPlaylist = channel.getUndocumentedRipsPlaylist()
   const defaults = {
-    "wikiStatus": (goFast === true ? "Undocumented" : video.getWikiStatus()),
+    // Until the issue with 403 Forbidden responses from Fandom has been addressed, default to undocumented
+    // "wikiStatus": (goFast === true ? "Undocumented" : video.getWikiStatus()),
+    "wikiStatus": "Undocumented",
     "videoStatus": (goFast === true ? "Public" : video.getYoutubeStatus())
   }
   video.createDatabaseObject(defaults)
