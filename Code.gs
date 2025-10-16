@@ -95,7 +95,6 @@ function getNewVideoResult(id, goFast = false) {
   }
 
   const channel = video.getChannel()
-  const videoSheet = channel.getSheet()
   const undocumentedRipsPlaylist = channel.getUndocumentedRipsPlaylist()
   const defaults = {
     "wikiStatus": (goFast === true ? "Undocumented" : video.getWikiStatus()),
@@ -122,10 +121,13 @@ function getNewVideoResult(id, goFast = false) {
     video.getDatabaseObject().commentCount
   ]]
 
-  videoSheet.insertValues(videoValues)
+  if (channel.hasSheet() === true) {
+    const videoSheet = channel.getSheet()
+    videoSheet.insertValues(videoValues)
 
-  if (goFast === false) {
-    videoSheet.sort(5, false)
+    if (goFast === false) {
+      videoSheet.sort(5, false)
+    }
   }
 
   return `Added video ${id}`
